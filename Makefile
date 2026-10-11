@@ -3,7 +3,9 @@ PARA_EXE = build/para_scproblem
 EXE_TEST = build/testing
 DS = source/data_structure.c
 RG = source/random_generator.c
-GEN = source/genetic.c
+LS = source/local_search.c
+MUT = source/mutation.c
+SRC = $(DS) $(RG) $(LS) $(MUT)
 
 ifeq ($(OS),Windows_NT)
 	CLEAN_CMD = del /q /f build\seq_scproblem build\para_scproblem build\testing build\convergence 2>nul || exit 0
@@ -13,16 +15,16 @@ endif
 
 all: $(PARA_EXE)
 
-$(PARA_EXE): para_main.c $(DS) $(RG) $(GEN)
-	g++ para_main.c $(DS) $(RG) $(GEN) -Iheaders -O2 -o $(PARA_EXE)
+$(PARA_EXE): para_main.c $(SRC)
+	g++ para_main.c $(SRC) -Iheaders -O2 -o $(PARA_EXE)
 
 run: $(PARA_EXE)
 	$(PARA_EXE) $(file)
 
 seq: $(SEQ_EXE)
 
-$(SEQ_EXE): seq_main.c $(DS) $(RG) $(GEN)
-	g++ seq_main.c $(DS) $(RG) $(GEN) -Iheaders -O2 -o $(SEQ_EXE)
+$(SEQ_EXE): seq_main.c $(SRC)
+	g++ seq_main.c $(SRC) -Iheaders -O2 -o $(SEQ_EXE)
 
 run_seq: $(SEQ_EXE)
 	$(SEQ_EXE) $(file)
@@ -35,7 +37,7 @@ endif
 
 .PHONY: test
 test:
-	g++ testing.c $(DS) $(RG) $(GEN) -Iheaders -O2 $(TEST_FLAGS) -o $(EXE_TEST)
+	g++ testing.c $(SRC) -Iheaders -O2 $(TEST_FLAGS) -o $(EXE_TEST)
 	$(EXE_TEST)
 
 ifeq ($(NO_LS),1)
@@ -46,7 +48,7 @@ endif
 
 .PHONY: convergence
 convergence:
-	g++ convergence.c $(DS) $(RG) $(GEN) -Iheaders -O2 $(CONV_FLAGS) -o build/convergence
+	g++ convergence.c $(SRC) -Iheaders -O2 $(CONV_FLAGS) -o build/convergence
 	build/convergence
 
 .PHONY: clean

@@ -3,7 +3,7 @@
 ## Compiling
 
 Command | Action
-- | -
+--- | ---
 `make` | to compile parallel executable
 `make run <file>` | to run the parallel executable with `<file>` argument
 `make seq` | to compile sequential executable
@@ -14,7 +14,7 @@ Command | Action
 Nonexistent paths must be created
 
 File/Path | Description
-- | -
+--- | ---
 `source/` | `.c` source files
 `headers/` | `.h` files
 `tests/` | test/input files
