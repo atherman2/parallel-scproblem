@@ -31,7 +31,7 @@ int* random_unique_range_set(int min, int max, int count) {
         int num = random_in_range_int(min, max);
         bool exists = false;
         
-        // Busca linear simples
+        // simple linear search
         for (int i = 0; i < current_count; i++) {
             if (result[i] == num) {
                 exists = true;
@@ -61,7 +61,7 @@ int* random_unique_range_shuffle(int min, int max, int count) {
         pool[i] = min + i;
     }
 
-    // Eq ao std::shuffle (Algoritmo Fisher-Yates)
+    // std::shuffle (Fisher-Yates)
     for (int i = range_size - 1; i > 0; i--) {
         int j = random_in_range_int(0, i);
         int temp = pool[i];
