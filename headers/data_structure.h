@@ -26,7 +26,8 @@ struct SCPInstance {
     uint num_rows, num_columns;
     SCPColumn* columns;
     SCPRow* rows;
-    uint* columns_range, rows_range;
+    uint* columns_range;
+    uint* rows_range;
 };
 typedef struct SCPInstance SCPInstance;
 
@@ -36,8 +37,10 @@ void print_rows(const SCPInstance* instance);
 
 struct SCPSolution {
     double cost;
-    uint* columns_used, uncovered_rows;
+    uint* columns_used;
+    uint* uncovered_rows;
     uint num_columns_used;
+    uint num_uncovered_rows;
     bool_uchar* column_used;
 };
 typedef struct SCPSolution SCPSolution;
