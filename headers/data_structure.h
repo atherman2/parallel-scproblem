@@ -7,11 +7,12 @@ typedef unsigned char bool_uchar;
 struct SCPColumn {
     double cost;
     uint* covered_rows;
+    uint num_covered_rows;
     bool_uchar* covers_row;
 };
 typedef struct SCPColumn SCPColumn;
 
-void create_scp_column(SCPColumn* c, double cost, uint* rows, int num_rows);
+void create_scp_column(SCPColumn* c, double cost, uint* rows, uint num_rows, uint num_rows_covered);
 
 struct SCPRow {
     uint* covered_by;
@@ -37,6 +38,7 @@ struct SCPSolution {
     uint* columns_used, uncovered_rows;
     bool_uchar* column_used;
 };
+typedef struct SCPSolution SCPSolution;
 void create_scp_solution(SCPSolution* sol, double cost, uint* columns_used, uint* uncovered_rows, int num_columns);
 bool_uchar is_scp_solution_valid(const SCPSolution* sol);
 void scp_solution_remove_column(SCPSolution* sol, int column_idx, SCPInstance* instance);
