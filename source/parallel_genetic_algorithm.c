@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "parallel_genetic_algorithm.h"
 #include "constants.h"
 #include "population.h"
@@ -6,15 +7,23 @@
 #include "crossover.h"
 #include "mutation.h"
 #include "local_search.h"
+#include "random_generator.h"
 
 void set_interval(int* start, int* end, int* interval_size, int total, int thread_id) {
-    if (thread_id == (k_threads - 1)) *interval_size = (total/k_threads) + (total % k_threads);
-    else *interval_size = total/k_threads;
+    if ((k_threads > total) && (thread_id <= (total - 1))) {
+        *interval_size = 1;
+    } else if (k_threads > total) {
+        *interval_size = 0;
+    } else if (thread_id == (k_threads - 1)) {
+        *interval_size = (total/k_threads) + (total % k_threads);
+    } else {
+        *interval_size = total/k_threads;
+    }
     *start = *interval_size * thread_id;
     *end = *start + *interval_size;
 }
 
-void* thread_worker(void* arg) {
+void* thread_genetic_algorithm(void* arg) {
     ThreadData* data = (ThreadData*) arg;
     SCPInstance* instance = data->instance;
     int best_candidate_idx;
@@ -25,10 +34,18 @@ void* thread_worker(void* arg) {
     set_interval(&population_start_idx, &population_end_idx, &population_interval_size, POPULATION_SIZE, data->thread_id);
     set_interval(&mutation_start_idx, &mutation_end_idx, &mutation_interval_size, mutation_count, data->thread_id);
     set_interval(&children_start_idx, &children_end_idx, &children_interval_size, PARENT_PAIRS_COUNT, data->thread_id);
-    best_candidate_idx = fill_initial_population(population[population_start_idx], population_interval_size, data->instance, &data->seed);
+    pthread_barrier_wait(&thread_work_start);
+    best_candidate_idx = fill_initial_population(&population[population_start_idx], population_interval_size, data->instance, &data->seed);
     data->best_local_idx = best_candidate_idx + population_start_idx;
     data->best_local_cost = population[data->best_local_idx].cost;
-    pthread_barrier_wait(&genetic_step_barrier);
+    pthread_barrier_wait(&thread_work_done);
+}
+
+void best_among_threads(SCPSolution* best, SCPInstance* instance) {
+    for (int thread_id = 0; thread_id < k_threads; thread_id++) {
+        ThreadData* data = &threads_data[thread_id];
+        update_best(best, &population[data->best_local_idx], instance);
+    }
 }
 
 void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsigned int* seed, double* convergence_history) {
@@ -38,12 +55,41 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
     int history_size = 0;
     int best_idx;
 
-    best_idx = fill_initial_population(population, POPULATION_SIZE, instance, seed);
-    scp_solution_empty(best, instance);
-    scp_solution_copy(best, &population[best_idx], instance);
+    iterations_finished = 0;
+
+    int num_children = PARENT_PAIRS_COUNT;
+    mutation_count = (int)(POPULATION_SIZE * MUTATION_RATE);
+    if (mutation_count < 1) mutation_count = 1;
+    if (mutation_count > num_children) mutation_count = num_children;
+    selected_children_indexes = random_unique_range_set(seed, 0, num_children - 1, mutation_count);
 
     for (int i = 0; i < PARENT_PAIRS_COUNT; i++)
         scp_solution_empty(&children[i], instance);
+
+    k_threads = -1;
+    while((k_threads < 1) || k_threads > POPULATION_SIZE) {
+        printf("Thread count must be greater than 0 and lesser than %d\n", POPULATION_SIZE);
+        printf("Insert the thread count: ");
+        scanf("%d", &k_threads);
+    }
+    thread_barrier_init(&thread_work_start, NULL, k_threads + 1);
+    thread_barrier_init(&thread_work_done, NULL, k_threads + 1);
+    threads_data = (ThreadData*) malloc(sizeof(ThreadData) * k_threads);
+    thread_ret = (int*) malloc(sizeof(int) * k_threads);
+    for (int thread_id = 0; thread_id < k_threads; thread_id++) {
+        ThreadData* data = threads_data[thread_id];
+        data->thread_id = thread_id;
+        data->instance = instance;
+        data->best_local_idx = -1;
+        data->best_local_cost = -1.0;
+        random_generator_init(&data->seed, base_seed, thread_id);
+        thread_ret[thread_id] = pthread_create(threads + thread_id, NULL, thread_genetic_algorithm, (void*) data);
+    }
+    // Signalize threads can start working
+    pthread_barrier_wait(&thread_work_start);
+    // Wait threads finish filling the population
+    pthread_barrier_wait(&thread_work_done);
+    best_among_threads(best, instance);
 
 #ifndef NO_LOCAL_SEARCH
     best_idx = apply_local_search(population, POPULATION_SIZE, instance);
@@ -76,10 +122,19 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
             convergence_history[history_size++] = best->cost;
     }
 
+    for (int thread_id = 0; thread_id < k_threads; thread_id++)
+        pthread_join(threads[t], NULL);
+    free(threads);
+    free(threads_data);
+    free(thread_ret);
+    pthread_barrier_destroy(&thread_work_start);
+    pthread_barrier_destroy(&thread_work_done);
+
     for (int i = 0; i < POPULATION_SIZE; i++)
         scp_solution_free(&population[i]);
     for (int i = 0; i < PARENT_PAIRS_COUNT; i++)
         scp_solution_free(&children[i]);
     free(population);
     free(children);
+    free(selected_children_indexes);
 }

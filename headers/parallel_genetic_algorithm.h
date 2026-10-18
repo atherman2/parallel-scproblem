@@ -5,7 +5,7 @@
 #include <pthread.h>
 
 struct ThreadData {
-    int thread_id, k_threads;
+    int thread_id;
     SCPInstance* instance;
     unsigned int seed;
     int best_local_idx;
@@ -13,15 +13,21 @@ struct ThreadData {
 };
 typedef struct ThreadData ThreadData;
 
-bool_uchar iteration_end;
+ThreadData* threads_data;
+bool_uchar iterations_finished;
 int k_threads, mutation_count;
 int* selected_children_indexes;
 SCPSolution *population, *children;
-pthread_barrier_t genetic_step_barrier;
+pthread_barrier_t thread_work_start, thread_work_done;
+pthread_t* threads;
+int * thread_ret;
 
 void set_interval(int* start, int* end, int* interval_size, int total, int thread_id);
 
-void* thread_worker(void* arg);
+void* thread_genetic_algorithm(void* arg);
+
+int best_idx_among_threads(SCPSolution* best, SCPInstance* instance);
+
 /*
  * Runs the parallel version of the genetic algorithm and stores the best solution found in *best
  * (allocated here; release it with scp_solution_free).
