@@ -44,7 +44,6 @@ else
 	LS_FLAGS =
 endif
 
-# Switch to $(PARA_EXE) once para_main.c exists
 all: $(SEQ_EXE)
 
 build:
