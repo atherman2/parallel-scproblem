@@ -1,8 +1,13 @@
-#ifndef GENETIC_ALGORITHM_H
-#define GENETIC_ALGORITHM_H
+#ifndef PARALLEL_GENETIC_ALGORITHM_H
+#define PARALLEL_GENETIC_ALGORITHM_H
 
 #include "data_structure.h"
 #include <pthread.h>
+
+/* Task the worker threads must run next. Set by the main thread before the start barrier. */
+#define TASK_FILL_POPULATION 0   /* builds the initial population */
+#define TASK_LOCAL_SEARCH    1   /* runs the local search on ls_solutions */
+#define TASK_STOP            2   /* algorithm finished, threads must exit */
 
 struct ThreadData {
     int thread_id;
@@ -21,12 +26,17 @@ SCPSolution *population, *children;
 pthread_barrier_t thread_work_start, thread_work_done;
 pthread_t* threads;
 int * thread_ret;
+SCPSolution* ls_solutions;
+int ls_num;
+int current_task;
 
 void set_interval(int* start, int* end, int* interval_size, int total, int thread_id);
 
 void* thread_genetic_algorithm(void* arg);
 
 int best_idx_among_threads(SCPSolution* best, SCPInstance* instance);
+
+int apply_local_search_parallel(SCPSolution* solutions, int num_solutions);
 
 /*
  * Runs the parallel version of the genetic algorithm and stores the best solution found in *best

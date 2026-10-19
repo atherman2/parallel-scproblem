@@ -8,6 +8,7 @@
 #include "mutation.h"
 #include "local_search.h"
 #include "random_generator.h"
+#include "parallel_local_search.h"
 
 void set_interval(int* start, int* end, int* interval_size, int total, int thread_id) {
     if ((k_threads > total) && (thread_id <= (total - 1))) {
@@ -23,22 +24,66 @@ void set_interval(int* start, int* end, int* interval_size, int total, int threa
     *end = *start + *interval_size;
 }
 
+// void* thread_genetic_algorithm(void* arg) {
+//     ThreadData* data = (ThreadData*) arg;
+//     SCPInstance* instance = data->instance;
+//     int best_candidate_idx;
+//     int population_start_idx, population_end_idx, population_interval_size;
+//     int mutation_start_idx, mutation_end_idx, mutation_interval_size;
+//     int children_start_idx, children_end_idx, children_interval_size;
+//     // Set the indexes interval of operations of the thread
+//     set_interval(&population_start_idx, &population_end_idx, &population_interval_size, POPULATION_SIZE, data->thread_id);
+//     set_interval(&mutation_start_idx, &mutation_end_idx, &mutation_interval_size, mutation_count, data->thread_id);
+//     set_interval(&children_start_idx, &children_end_idx, &children_interval_size, PARENT_PAIRS_COUNT, data->thread_id);
+//     pthread_barrier_wait(&thread_work_start);
+//     best_candidate_idx = fill_initial_population(&population[population_start_idx], population_interval_size, data->instance, &data->seed);
+//     data->best_local_idx = best_candidate_idx + population_start_idx;
+//     data->best_local_cost = population[data->best_local_idx].cost;
+//     pthread_barrier_wait(&thread_work_done);
+// }
+
+/*
+ * Worker thread. The threads are created once and stay alive during the whole
+ * algorithm, so instead of doing a single job this function loops: it waits for
+ * the main thread to release it, runs the task written in current_task, and
+ * reports back through the done barrier. The loop ends when the main thread
+ * sets TASK_STOP.
+ */
 void* thread_genetic_algorithm(void* arg) {
     ThreadData* data = (ThreadData*) arg;
     SCPInstance* instance = data->instance;
-    int best_candidate_idx;
-    int population_start_idx, population_end_idx, population_interval_size;
-    int mutation_start_idx, mutation_end_idx, mutation_interval_size;
-    int children_start_idx, children_end_idx, children_interval_size;
-    // Set the indexes interval of operations of the thread
-    set_interval(&population_start_idx, &population_end_idx, &population_interval_size, POPULATION_SIZE, data->thread_id);
-    set_interval(&mutation_start_idx, &mutation_end_idx, &mutation_interval_size, mutation_count, data->thread_id);
-    set_interval(&children_start_idx, &children_end_idx, &children_interval_size, PARENT_PAIRS_COUNT, data->thread_id);
-    pthread_barrier_wait(&thread_work_start);
-    best_candidate_idx = fill_initial_population(&population[population_start_idx], population_interval_size, data->instance, &data->seed);
-    data->best_local_idx = best_candidate_idx + population_start_idx;
-    data->best_local_cost = population[data->best_local_idx].cost;
-    pthread_barrier_wait(&thread_work_done);
+    int start_idx, end_idx, interval_size;
+    int running = 1;
+
+    while (running) {
+        // Wait until the main thread has chosen the task and released the threads
+        pthread_barrier_wait(&thread_work_start);
+
+        if (current_task == TASK_STOP) {
+            running = 0;
+        } else {
+            if (current_task == TASK_FILL_POPULATION) {
+                // This thread builds its slice of the initial population
+                set_interval(&start_idx, &end_idx, &interval_size, POPULATION_SIZE, data->thread_id);
+                if (interval_size > 0) {
+                    int best_idx = fill_initial_population(&population[start_idx], interval_size, instance, &data->seed);
+                    data->best_local_idx = best_idx + start_idx;
+                    data->best_local_cost = population[data->best_local_idx].cost;
+                } else {
+                    data->best_local_idx = -1;   // empty slice, nothing to report
+                }
+            } else if (current_task == TASK_LOCAL_SEARCH) {
+                // This thread improves its slice of ls_solutions and keeps the best of the slice
+                set_interval(&start_idx, &end_idx, &interval_size, ls_num, data->thread_id);
+                local_search_range(ls_solutions, start_idx, end_idx, instance,
+                                   &data->best_local_idx, &data->best_local_cost);
+            }
+
+            // Tell the main thread this thread has finished the task
+            pthread_barrier_wait(&thread_work_done);
+        }
+    }
+    return NULL;
 }
 
 void best_among_threads(SCPSolution* best, SCPInstance* instance) {
@@ -77,7 +122,7 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
     threads_data = (ThreadData*) malloc(sizeof(ThreadData) * k_threads);
     thread_ret = (int*) malloc(sizeof(int) * k_threads);
     for (int thread_id = 0; thread_id < k_threads; thread_id++) {
-        ThreadData* data = threads_data[thread_id];
+        ThreadData* data = &threads_data[thread_id];
         data->thread_id = thread_id;
         data->instance = instance;
         data->best_local_idx = -1;
