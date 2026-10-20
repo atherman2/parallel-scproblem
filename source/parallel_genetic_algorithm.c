@@ -93,6 +93,38 @@ void best_among_threads(SCPSolution* best, SCPInstance* instance) {
     }
 }
 
+/*
+ * Runs the local search on solutions[0..num_solutions-1] using all threads and
+ * returns the index of the best solution (lowest cost, lowest index on ties).
+ * Main thread only: it releases the workers, waits for them and picks the best.
+ */
+int apply_local_search_parallel(SCPSolution* solutions, int num_solutions) {
+    // Tell the workers what to process and which task to run
+    ls_solutions = solutions;
+    ls_num = num_solutions;
+    current_task = TASK_LOCAL_SEARCH;
+
+    // Release the workers and wait until all of them finish their slices
+    pthread_barrier_wait(&thread_work_start);
+    pthread_barrier_wait(&thread_work_done);
+
+    // Pick the best among the partial results, in thread order
+    int best_idx = -1;
+    double best_cost = 0.0;
+    for (int thread_id = 0; thread_id < k_threads; thread_id++) {
+        ThreadData* data = &threads_data[thread_id];
+
+        if (data->best_local_idx < 0)   // Thread had an empty slice (more threads than solutions)
+            continue;
+
+        if (best_idx < 0 || data->best_local_cost < best_cost) {
+            best_idx = data->best_local_idx;
+            best_cost = data->best_local_cost;
+        }
+    }
+    return best_idx;
+}
+
 void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsigned int* seed, double* convergence_history) {
     population = malloc(POPULATION_SIZE * sizeof(SCPSolution));
     children = malloc(PARENT_PAIRS_COUNT * sizeof(SCPSolution));
@@ -137,7 +169,7 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
     best_among_threads(best, instance);
 
 #ifndef NO_LOCAL_SEARCH
-    best_idx = apply_local_search(population, POPULATION_SIZE, instance);
+    best_idx = apply_local_search_parallel(population, POPULATION_SIZE);
 #else
     best_idx = best_of_population(population, POPULATION_SIZE);
 #endif
