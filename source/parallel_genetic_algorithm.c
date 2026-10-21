@@ -13,14 +13,17 @@
 void set_interval(int* start, int* end, int* interval_size, int total, int thread_id) {
     if ((k_threads > total) && (thread_id <= (total - 1))) {
         *interval_size = 1;
+        *start = thread_id;
     } else if (k_threads > total) {
         *interval_size = 0;
+        *start = 0;
     } else if (thread_id == (k_threads - 1)) {
         *interval_size = (total/k_threads) + (total % k_threads);
+        *start = (total/k_threads) * thread_id;
     } else {
         *interval_size = total/k_threads;
+        *start = *interval_size * thread_id;
     }
-    *start = *interval_size * thread_id;
     *end = *start + *interval_size;
 }
 
@@ -77,6 +80,19 @@ void* thread_genetic_algorithm(void* arg) {
                 set_interval(&start_idx, &end_idx, &interval_size, ls_num, data->thread_id);
                 local_search_range(ls_solutions, start_idx, end_idx, instance,
                                    &data->best_local_idx, &data->best_local_cost);
+            } else if (current_task == TASK_MUTATION) {
+                // This thread mutates its slice of selected_children_indexes and keeps the best of the slice
+                set_interval(&start_idx, &end_idx, &interval_size, mutation_count, data->thread_id);
+                data->best_local_idx = -1;
+                data->best_local_cost = 0.0;
+                for (int i = start_idx; i < end_idx; i++) {
+                    int child_idx = selected_children_indexes[i];
+                    mutation(&children[child_idx], instance, &data->seed);
+                    if (data->best_local_idx < 0 || children[child_idx].cost < data->best_local_cost) {
+                        data->best_local_idx = child_idx;
+                        data->best_local_cost = children[child_idx].cost;
+                    }
+                }
             }
 
             // Tell the main thread this thread has finished the task
@@ -125,6 +141,46 @@ int apply_local_search_parallel(SCPSolution* solutions, int num_solutions) {
     return best_idx;
 }
 
+/*
+ * Selects mutation_count distinct children at random, mutates them in parallel
+ * across all worker threads, and returns the index of the best mutated child.
+ */
+int mutate_children_parallel(int num_children, unsigned int* seed) {
+    if (num_children <= 0) return -1;
+
+    mutation_count = (int)(POPULATION_SIZE * MUTATION_RATE);
+    if (mutation_count < 1) mutation_count = 1;
+    if (mutation_count > num_children) mutation_count = num_children;
+
+    selected_children_indexes = random_unique_range_set(seed, 0, num_children - 1, mutation_count);
+    if (!selected_children_indexes) return -1;
+
+    current_task = TASK_MUTATION;
+
+    // Release the workers and wait until all of them finish their slices
+    pthread_barrier_wait(&thread_work_start);
+    pthread_barrier_wait(&thread_work_done);
+
+    free(selected_children_indexes);
+    selected_children_indexes = NULL;
+
+    // Pick the best among the partial results, in thread order
+    int best_idx = -1;
+    double best_cost = 0.0;
+    for (int thread_id = 0; thread_id < k_threads; thread_id++) {
+        ThreadData* data = &threads_data[thread_id];
+
+        if (data->best_local_idx < 0)   // Thread had an empty slice (more threads than mutated children)
+            continue;
+
+        if (best_idx < 0 || data->best_local_cost < best_cost) {
+            best_idx = data->best_local_idx;
+            best_cost = data->best_local_cost;
+        }
+    }
+    return best_idx;
+}
+
 void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsigned int* seed, double* convergence_history) {
     population = malloc(POPULATION_SIZE * sizeof(SCPSolution));
     children = malloc(PARENT_PAIRS_COUNT * sizeof(SCPSolution));
@@ -133,12 +189,6 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
     int best_idx;
 
     iterations_finished = 0;
-
-    int num_children = PARENT_PAIRS_COUNT;
-    mutation_count = (int)(POPULATION_SIZE * MUTATION_RATE);
-    if (mutation_count < 1) mutation_count = 1;
-    if (mutation_count > num_children) mutation_count = num_children;
-    selected_children_indexes = random_unique_range_set(seed, 0, num_children - 1, mutation_count);
 
     for (int i = 0; i < PARENT_PAIRS_COUNT; i++)
         scp_solution_empty(&children[i], instance);
@@ -183,7 +233,7 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
         best_idx = make_children(children, PARENT_PAIRS_COUNT, parents, population, instance);
         update_best(best, &children[best_idx], instance);
 
-        best_idx = mutate_children(children, PARENT_PAIRS_COUNT, instance, seed);
+        best_idx = mutate_children_parallel(PARENT_PAIRS_COUNT, seed);
         update_best(best, &children[best_idx], instance);
 
 #ifndef NO_LOCAL_SEARCH
@@ -213,5 +263,4 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
         scp_solution_free(&children[i]);
     free(population);
     free(children);
-    free(selected_children_indexes);
 }
