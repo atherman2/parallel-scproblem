@@ -10,37 +10,32 @@
 #include "random_generator.h"
 #include "parallel_local_search.h"
 
+// Defines which part [start, end) of the array each thread will handle
 void set_interval(int* start, int* end, int* interval_size, int total, int thread_id) {
-    if ((k_threads > total) && (thread_id <= (total - 1))) {
-        *interval_size = 1;
-    } else if (k_threads > total) {
-        *interval_size = 0;
-    } else if (thread_id == (k_threads - 1)) {
-        *interval_size = (total/k_threads) + (total % k_threads);
+
+    if (k_threads > total) {
+        // In case there's more threads than items, onlt the first ones will work
+        if (thread_id < total) {
+            *interval_size = 1;
+            *start = thread_id;
+        } else {
+            *interval_size = 0;
+            *start = 0;
+        }
+
     } else {
-        *interval_size = total/k_threads;
+        int base_size = total / k_threads;
+        *start = base_size * thread_id;
+
+        // The last thread handles any remaining items
+        if (thread_id == k_threads - 1) {
+            *interval_size = base_size + (total % k_threads);
+        } else {
+            *interval_size = base_size;
+        }
     }
-    *start = *interval_size * thread_id;
     *end = *start + *interval_size;
 }
-
-// void* thread_genetic_algorithm(void* arg) {
-//     ThreadData* data = (ThreadData*) arg;
-//     SCPInstance* instance = data->instance;
-//     int best_candidate_idx;
-//     int population_start_idx, population_end_idx, population_interval_size;
-//     int mutation_start_idx, mutation_end_idx, mutation_interval_size;
-//     int children_start_idx, children_end_idx, children_interval_size;
-//     // Set the indexes interval of operations of the thread
-//     set_interval(&population_start_idx, &population_end_idx, &population_interval_size, POPULATION_SIZE, data->thread_id);
-//     set_interval(&mutation_start_idx, &mutation_end_idx, &mutation_interval_size, mutation_count, data->thread_id);
-//     set_interval(&children_start_idx, &children_end_idx, &children_interval_size, PARENT_PAIRS_COUNT, data->thread_id);
-//     pthread_barrier_wait(&thread_work_start);
-//     best_candidate_idx = fill_initial_population(&population[population_start_idx], population_interval_size, data->instance, &data->seed);
-//     data->best_local_idx = best_candidate_idx + population_start_idx;
-//     data->best_local_cost = population[data->best_local_idx].cost;
-//     pthread_barrier_wait(&thread_work_done);
-// }
 
 /*
  * Worker thread. The threads are created once and stay alive during the whole
