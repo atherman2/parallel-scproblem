@@ -14,7 +14,7 @@
 void set_interval(int* start, int* end, int* interval_size, int total, int thread_id) {
 
     if (k_threads > total) {
-        // In case there's more threads than items, onlt the first ones will work
+        // In case there's more threads than items, only the first ones will work
         if (thread_id < total) {
             *interval_size = 1;
             *start = thread_id;
@@ -182,7 +182,7 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
         update_best(best, &children[best_idx], instance);
 
 #ifndef NO_LOCAL_SEARCH
-        best_idx = apply_local_search(children, PARENT_PAIRS_COUNT, instance);
+        best_idx = apply_local_search_parallel(children, PARENT_PAIRS_COUNT);
 #else
         best_idx = best_of_population(children, PARENT_PAIRS_COUNT);
 #endif
@@ -194,8 +194,13 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
             convergence_history[history_size++] = best->cost;
     }
 
+    // Tell the threads to stop and release them from the start barrier
+    current_task = TASK_STOP;
+    pthread_barrier_wait(&thread_work_start);
+
     for (int thread_id = 0; thread_id < k_threads; thread_id++)
-        pthread_join(threads[t], NULL);
+        pthread_join(threads[thread_id], NULL);
+
     free(threads);
     free(threads_data);
     free(thread_ret);
