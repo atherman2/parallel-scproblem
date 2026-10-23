@@ -22,7 +22,9 @@ POP = source/population.c
 SEL = source/selection.c
 CX = source/crossover.c
 GA = source/genetic_algorithm.c
-SRC = $(DS) $(RG) $(LS) $(MUT) $(POP) $(SEL) $(CX) $(GA)
+PGA = source/parallel_genetic_algorithm.c
+PLS = source/parallel_local_search.c
+SRC = $(DS) $(RG) $(LS) $(MUT) $(POP) $(SEL) $(CX) $(GA) $(PGA) $(PLS)
 HDR = $(wildcard headers/*.h)
 
 ifeq ($(OS),Windows_NT)

@@ -10,6 +10,18 @@
 #include "random_generator.h"
 #include "parallel_local_search.h"
 
+ThreadData* threads_data;
+bool_uchar iterations_finished;
+int k_threads, mutation_count;
+int* selected_children_indexes;
+SCPSolution *population, *children;
+pthread_barrier_t thread_work_start, thread_work_done;
+pthread_t* threads;
+int * thread_ret;
+SCPSolution* ls_solutions;
+int ls_num;
+int current_task;
+
 // Defines which part [start, end) of the array each thread will handle
 void set_interval(int* start, int* end, int* interval_size, int total, int thread_id) {
     if (k_threads > total) {
@@ -91,6 +103,12 @@ void* thread_genetic_algorithm(void* arg) {
         }
     }
     return NULL;
+}
+
+// Keeps in 'best' the cheaper of the two solutions
+void update_best(SCPSolution* best, const SCPSolution* candidate, const SCPInstance* instance) {
+    if (candidate->cost < best->cost)
+        scp_solution_copy(best, candidate, instance);
 }
 
 void best_among_threads(SCPSolution* best, SCPInstance* instance) {
@@ -190,8 +208,8 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
         printf("Insert the thread count: ");
         scanf("%d", &k_threads);
     }
-    thread_barrier_init(&thread_work_start, NULL, k_threads + 1);
-    thread_barrier_init(&thread_work_done, NULL, k_threads + 1);
+    pthread_barrier_init(&thread_work_start, NULL, k_threads + 1);
+    pthread_barrier_init(&thread_work_done, NULL, k_threads + 1);
     threads_data = (ThreadData*) malloc(sizeof(ThreadData) * k_threads);
     thread_ret = (int*) malloc(sizeof(int) * k_threads);
     for (int thread_id = 0; thread_id < k_threads; thread_id++) {
@@ -200,7 +218,7 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
         data->instance = instance;
         data->best_local_idx = -1;
         data->best_local_cost = -1.0;
-        random_generator_init(&data->seed, base_seed, thread_id);
+        random_generator_init(&data->seed, *seed, thread_id);
         thread_ret[thread_id] = pthread_create(threads + thread_id, NULL, thread_genetic_algorithm, (void*) data);
     }
     // Signalize threads can start working

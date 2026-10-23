@@ -19,21 +19,11 @@ struct ThreadData {
 };
 typedef struct ThreadData ThreadData;
 
-ThreadData* threads_data;
-bool_uchar iterations_finished;
-int k_threads, mutation_count;
-int* selected_children_indexes;
-SCPSolution *population, *children;
-pthread_barrier_t thread_work_start, thread_work_done;
-pthread_t* threads;
-int * thread_ret;
-SCPSolution* ls_solutions;
-int ls_num;
-int current_task;
-
 void set_interval(int* start, int* end, int* interval_size, int total, int thread_id);
 
 void* thread_genetic_algorithm(void* arg);
+
+void update_best(SCPSolution* best, const SCPSolution* candidate, const SCPInstance* instance);
 
 int best_idx_among_threads(SCPSolution* best, SCPInstance* instance);
 
