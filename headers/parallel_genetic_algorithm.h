@@ -7,7 +7,8 @@
 /* Task the worker threads must run next. Set by the main thread before the start barrier. */
 #define TASK_FILL_POPULATION 0   /* builds the initial population */
 #define TASK_LOCAL_SEARCH    1   /* runs the local search on ls_solutions */
-#define TASK_STOP            2   /* algorithm finished, threads must exit */
+#define TASK_MUTATION        2   /* mutates the selected children */
+#define TASK_STOP            3   /* algorithm finished, threads must exit */
 
 struct ThreadData {
     int thread_id;
@@ -37,6 +38,8 @@ void* thread_genetic_algorithm(void* arg);
 int best_idx_among_threads(SCPSolution* best, SCPInstance* instance);
 
 int apply_local_search_parallel(SCPSolution* solutions, int num_solutions);
+
+int mutate_children_parallel(int num_children, unsigned int* seed);
 
 /*
  * Runs the parallel version of the genetic algorithm and stores the best solution found in *best
