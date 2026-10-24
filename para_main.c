@@ -1,6 +1,5 @@
 #include "constants.h"
 #include "data_structure.h"
-#include "headers/data_structure.h"
 #include "random_generator.h"
 #include "parallel_genetic_algorithm.h"
 #include <math.h>
@@ -31,5 +30,6 @@ int main(int argc, char* argv[]) {
         printf("Press 1 to run the algorithm again, 0 to exit: ");
         scanf("%d", &repeat);
 	}
+	free_scp_instance(&instance);
 	return 0;
 }

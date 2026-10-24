@@ -215,6 +215,7 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
     threads = (pthread_t*) malloc(sizeof(pthread_t) * k_threads);
     threads_data = (ThreadData*) malloc(sizeof(ThreadData) * k_threads);
     thread_ret = (int*) malloc(sizeof(int) * k_threads);
+    current_task = TASK_FILL_POPULATION;
     for (int thread_id = 0; thread_id < k_threads; thread_id++) {
         ThreadData* data = &threads_data[thread_id];
         data->thread_id = thread_id;
