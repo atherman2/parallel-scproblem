@@ -293,5 +293,5 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
     free(children);
     clock_t end = clock();
     double elapsed_seconds = ((double) (end - start)) / CLOCKS_PER_SEC;
-	printf("Genetic algorithm finished in %f seconds\nSolution found cost: %f\nColumns used: ", elapsed_seconds, best->cost);
+	printf("Parallel genetic algorithm finished in %f seconds\nSolution found cost: %f\nColumns used: ", elapsed_seconds, best->cost);
 }
