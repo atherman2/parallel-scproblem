@@ -3,6 +3,7 @@
 #include "headers/data_structure.h"
 #include "random_generator.h"
 #include "parallel_genetic_algorithm.h"
+#include <math.h>
 #include <stdio.h>
 
 int main(int argc, char* argv[]) {
@@ -13,6 +14,7 @@ int main(int argc, char* argv[]) {
 	while (repeat) {
     	SCPSolution best_sol;
         scp_solution_empty(&best_sol, &instance);
+        best_sol.cost = INFINITY;
     	unsigned int seed = random_seed_from_time();
     	double* history = (double*) malloc(sizeof(double) * (MAX_GENERATION + 1));
     	parallel_genetic_algorithm(&best_sol, &instance, &seed, history);

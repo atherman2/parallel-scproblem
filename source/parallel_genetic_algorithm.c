@@ -114,7 +114,9 @@ void update_best(SCPSolution* best, const SCPSolution* candidate, const SCPInsta
 void best_among_threads(SCPSolution* best, SCPInstance* instance) {
     for (int thread_id = 0; thread_id < k_threads; thread_id++) {
         ThreadData* data = &threads_data[thread_id];
-        update_best(best, &population[data->best_local_idx], instance);
+        if (data->best_local_idx >= 0) {
+            update_best(best, &population[data->best_local_idx], instance);
+        }
     }
 }
 

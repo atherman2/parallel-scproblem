@@ -25,7 +25,7 @@ void* thread_genetic_algorithm(void* arg);
 
 void update_best(SCPSolution* best, const SCPSolution* candidate, const SCPInstance* instance);
 
-int best_idx_among_threads(SCPSolution* best, SCPInstance* instance);
+void best_idx_among_threads(SCPSolution* best, SCPInstance* instance);
 
 int apply_local_search_parallel(SCPSolution* solutions, int num_solutions);
 
