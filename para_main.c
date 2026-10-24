@@ -4,6 +4,7 @@
 #include "parallel_genetic_algorithm.h"
 #include <math.h>
 #include <stdio.h>
+#include <time.h>
 
 int main(int argc, char* argv[]) {
 	char* file_path = (argc > 1)? argv[1] : "tests/Wren_03.dat";
@@ -17,7 +18,6 @@ int main(int argc, char* argv[]) {
     	unsigned int seed = random_seed_from_time();
     	double* history = (double*) malloc(sizeof(double) * (MAX_GENERATION + 1));
     	parallel_genetic_algorithm(&best_sol, &instance, &seed, history);
-    	printf("%f\n", best_sol.cost);
     	scp_solution_print_columns_used(&best_sol);
     	free(history);
         bool_uchar valid_sol = verify_scp_solution(&best_sol, &instance);

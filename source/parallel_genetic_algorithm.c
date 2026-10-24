@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 #include "parallel_genetic_algorithm.h"
 #include "constants.h"
 #include "population.h"
@@ -210,6 +211,7 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
         printf("Insert the thread count: ");
         scanf("%d", &k_threads);
     }
+    clock_t start = clock();
     pthread_barrier_init(&thread_work_start, NULL, k_threads + 1);
     pthread_barrier_init(&thread_work_done, NULL, k_threads + 1);
     threads = (pthread_t*) malloc(sizeof(pthread_t) * k_threads);
@@ -289,4 +291,7 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
         scp_solution_free(&children[i]);
     free(population);
     free(children);
+    clock_t end = clock();
+    double elapsed_seconds = ((double) (end - start)) / CLOCKS_PER_SEC;
+	printf("Genetic algorithm finished in %f seconds\nSolution found cost: %f\nColumns used: ", elapsed_seconds, best->cost);
 }
