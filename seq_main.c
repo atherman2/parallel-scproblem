@@ -18,7 +18,13 @@ int main(int argc, char* argv[]) {
 	clock_t end = clock();
 	double elapsed_seconds = ((double) (end - start)) / CLOCKS_PER_SEC;
 	printf("Sequential genetic algorithm finished in %f seconds\nSolution found cost: %f\nColumns used: ", elapsed_seconds, best_sol.cost);
+	bool_uchar valid_sol = verify_scp_solution(&best_sol, &instance);
 	scp_solution_print_columns_used(&best_sol);
+	if (valid_sol) {
+        printf("Sequential solution is valid and was sequentially verified\n");
+    } else {
+        printf("Sequential solution is not valid by the sequential verification\n");
+    }
 	free(history);
 	return 0;
 }
