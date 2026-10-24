@@ -20,7 +20,6 @@ ax = df.set_index("instance")[columns].plot(kind="bar", figsize=(10, 5))
 ax.set_ylabel("Tempo médio (s)")
 ax.set_xlabel("Instância")
 ax.legend(["Sequencial"] + [f"{t} thread(s)" for t in threads])
-# ax.set_yscale("log")  # uncomment if the times differ a lot between instances
 plt.xticks(rotation=0)
 plt.tight_layout()
 plt.savefig(os.path.join(output_dir, "fig_time.png"), dpi=200)
@@ -42,3 +41,20 @@ plt.ylabel("Speedup")
 plt.legend()
 plt.tight_layout()
 plt.savefig(os.path.join(output_dir, "fig_speedup.png"), dpi=200)
+
+# ---------- Figure 3: cost of the parallel version relative to the sequential one ----------
+# Costs have very different scales between instances, so each value is divided by the
+# sequential average of its own instance (sequential = 100%).
+cost_df = pd.read_csv(os.path.join(output_dir, "costs.csv")).set_index("instance")
+relative_cost = cost_df[[str(t) for t in threads]].div(cost_df["sequential"], axis=0) * 100
+
+ax = relative_cost.plot(kind="bar", figsize=(10, 5))
+ax.axhline(100, color="k", linestyle="--", linewidth=1)  # sequential reference line
+ax.set_ylim(0, 110)
+ax.set_ylabel("Custo em relação ao sequencial (%)")
+ax.set_xlabel("Instância")
+ax.legend([f"{t} thread(s)" for t in threads] + ["Sequencial (100%)"], loc="lower right")
+plt.xticks(rotation=0)
+plt.tight_layout()
+plt.savefig(os.path.join(output_dir, "fig_cost.png"), dpi=200)
+plt.close()
