@@ -210,6 +210,7 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
     }
     pthread_barrier_init(&thread_work_start, NULL, k_threads + 1);
     pthread_barrier_init(&thread_work_done, NULL, k_threads + 1);
+    threads = (pthread_t*) malloc(sizeof(pthread_t) * k_threads);
     threads_data = (ThreadData*) malloc(sizeof(ThreadData) * k_threads);
     thread_ret = (int*) malloc(sizeof(int) * k_threads);
     for (int thread_id = 0; thread_id < k_threads; thread_id++) {
@@ -232,7 +233,9 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
 #else
     best_idx = best_of_population(population, POPULATION_SIZE);
 #endif
-    update_best(best, &population[best_idx], instance);
+    if (best_idx >= 0) {
+        update_best(best, &population[best_idx], instance);
+    }
     if (convergence_history)
         convergence_history[history_size++] = best->cost;
 
@@ -240,17 +243,23 @@ void parallel_genetic_algorithm(SCPSolution* best, SCPInstance* instance, unsign
         select_parents(parents, 2 * PARENT_PAIRS_COUNT, POPULATION_SIZE, population, seed);
 
         best_idx = make_children(children, PARENT_PAIRS_COUNT, parents, population, instance);
-        update_best(best, &children[best_idx], instance);
+        if (best_idx >= 0) {
+            update_best(best, &children[best_idx], instance);
+        }
 
         best_idx = mutate_children_parallel(PARENT_PAIRS_COUNT, seed);
-        update_best(best, &children[best_idx], instance);
+        if (best_idx >= 0) {
+            update_best(best, &children[best_idx], instance);
+        }
 
 #ifndef NO_LOCAL_SEARCH
         best_idx = apply_local_search_parallel(children, PARENT_PAIRS_COUNT);
 #else
         best_idx = best_of_population(children, PARENT_PAIRS_COUNT);
 #endif
-        update_best(best, &children[best_idx], instance);
+        if (best_idx >= 0) {
+            update_best(best, &children[best_idx], instance);
+        }
 
         elitism(population, POPULATION_SIZE, children, PARENT_PAIRS_COUNT);
 

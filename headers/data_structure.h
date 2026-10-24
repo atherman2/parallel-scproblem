@@ -67,6 +67,7 @@ void scp_solution_copy(SCPSolution* dst, const SCPSolution* src, const SCPInstan
 void scp_solution_free(SCPSolution* sol);
 
 bool_uchar is_scp_solution_valid(const SCPSolution* sol);
+bool_uchar verify_scp_solution(const SCPSolution* sol, const SCPInstance* instance);
 void scp_solution_remove_column(SCPSolution* sol, int column_idx, SCPInstance* instance);
 void scp_solution_add_column(SCPSolution* sol, int column_idx, SCPInstance* instance);
 void scp_solution_print_columns_used(const SCPSolution* sol);

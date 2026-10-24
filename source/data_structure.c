@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
 
 void create_scp_column(SCPColumn *c, double cost, uint *rows, uint num_rows, uint num_covered_rows) {
     c->cost = cost;
@@ -283,6 +284,35 @@ void scp_solution_free(SCPSolution* sol) {
 
 bool_uchar is_scp_solution_valid(const SCPSolution* sol) {
     return sol->num_uncovered_rows == 0;
+}
+
+bool_uchar verify_scp_solution(const SCPSolution* sol, const SCPInstance* instance) {
+    double sol_cost = 0.0;
+    bool_uchar* is_row_covered = (bool_uchar*) calloc(instance->num_rows, sizeof(bool_uchar));
+    for (uint i = 0; i < sol->num_columns_used; i++) {
+        uint column_idx = sol->columns_used[i];
+        SCPColumn* column = &instance->columns[column_idx];
+        sol_cost += column->cost;
+        for (uint j = 0; j < column->num_covered_rows; j++) {
+            uint row_idx = column->covered_rows[j];
+            is_row_covered[row_idx] = 1;
+        }
+    }
+    double tolerance = 1e-6 * (1.0 + fabs(sol->cost));
+    if (fabs(sol_cost - sol->cost) > tolerance) {
+        printf(
+            "Solution computed cost is wrong\nSolution verified cost: %f; Solution computed cost: %f\n",
+            sol_cost, sol->cost
+        );
+    }
+    for (uint i = 0; i < instance->num_rows; i++) {
+        if (!is_row_covered[i]) {
+            free(is_row_covered);
+            return 0;
+        }
+    }
+    free(is_row_covered);
+    return 1;
 }
 
 /**

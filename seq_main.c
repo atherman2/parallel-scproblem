@@ -9,6 +9,7 @@ int main(int argc, char* argv[]) {
 	SCPInstance instance;
 	if (!read_scp_instance(&instance, file_path)) return 1;
 	SCPSolution best_sol;
+	scp_solution_empty(&best_sol, &instance);
 	unsigned int seed = random_seed_from_time();
 	double* history = (double*) malloc(sizeof(double) * (MAX_GENERATION + 1));
 	genetic_algorithm(&best_sol, &instance, &seed, history);
